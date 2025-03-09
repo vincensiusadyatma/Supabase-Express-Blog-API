@@ -1,0 +1,58 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  user_uuid    String   @unique
+  username     String
+  fullname     String
+  email        String   @unique
+  phone_number String?  // Nullable
+  status       Boolean
+  password     String?  // Nullable
+  rememberToken String? // Nullable
+  last_sign_in DateTime? @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+}
+
+model PressRelease {
+  id         Int      @id @default(autoincrement())
+  press_uuid String   @unique
+  title      String
+  date       DateTime @db.Date
+  time       DateTime @db.Time
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+}
+
+
+model Carrer {
+  id          Int      @id @default(autoincrement())
+  carrer_uuid String   @unique
+  image_url   String?  // Nullable
+  description String?  // Nullable 
+  link        String?  // Nullable
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model Gallery {
+  id          Int      @id @default(autoincrement())
+  gallery_uuid String   @unique
+  image_url   String?  // Nullable
+  caption     String?  // Nullable 
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+
