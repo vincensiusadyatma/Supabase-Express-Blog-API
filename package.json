@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "build": "prisma generate && next build",
     "start-api": "node index.js",
     "dev-api": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
