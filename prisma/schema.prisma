@@ -1,28 +1,35 @@
-
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  user_uuid    String   @unique
-  username     String
-  fullname     String
-  email        String   @unique
-  phone_number String?  // Nullable
-  status       Boolean
-  password     String?  // Nullable
+  id            Int       @id @default(autoincrement())
+  user_uuid     String    @unique
+  username      String
+  fullname      String
+  email         String    @unique
+  phone_number  String? // Nullable
+  status        Boolean
+  password      String? // Nullable
   rememberToken String? // Nullable
-  last_sign_in DateTime? @db.Timestamptz
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  last_sign_in  DateTime? @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relasi ke GalleryCreator
+  galleryCreators GalleryCreator[]
+
+  // Relasi ke CarrerCreator
+  carrerCreators CarrerCreator[]
+
+  // Relasi ke PressReleaseCreator
+  pressReleaseCreators PressReleaseCreator[]
 }
 
 model PressRelease {
@@ -33,26 +40,83 @@ model PressRelease {
   time       DateTime @db.Time
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relasi ke PressReleaseContent
+  pressReleaseContents PressReleaseContent[]
+
+  // Relasi ke PressReleaseCreator
+  pressReleaseCreators PressReleaseCreator[]
 }
 
-
-model Carrer {
+model Career {
   id          Int      @id @default(autoincrement())
-  carrer_uuid String   @unique
-  image_url   String?  // Nullable
-  description String?  // Nullable 
-  link        String?  // Nullable
+  career_uuid String   @unique
+  image_url   String? // Nullable
+  caption String? // Nullable 
+  link        String? // Nullable
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relasi ke CarrerCreator
+  carrerCreators CarrerCreator[]
 }
 
 model Gallery {
-  id          Int      @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   gallery_uuid String   @unique
-  image_url   String?  // Nullable
-  caption     String?  // Nullable 
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  image_url    String? // Nullable
+  caption      String? // Nullable 
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relasi ke GalleryCreator
+  galleryCreators GalleryCreator[]
 }
 
+model PressReleaseContent {
+  id             Int          @id @default(autoincrement())
+  pressRelease   PressRelease @relation(fields: [pressReleaseId], references: [id], onDelete: Cascade)
+  pressReleaseId Int
+  imageUrl       String? // Nullable
+  content        String? // Nullable (text in Laravel, which maps to String in Prisma)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
+  @@map("press_release_contents")
+}
+
+model CarrerCreator {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  career    Career   @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  careerId  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("carrer_creators")
+}
+
+model GalleryCreator {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  gallery   Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  galleryId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("gallery_creators")
+}
+
+model PressReleaseCreator {
+  id             Int          @id @default(autoincrement())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int
+  pressRelease   PressRelease @relation(fields: [pressReleaseId], references: [id], onDelete: Cascade)
+  pressReleaseId Int
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("press_releases_creators")
+}
