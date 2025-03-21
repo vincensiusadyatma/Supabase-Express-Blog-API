@@ -48,11 +48,11 @@ model PressRelease {
   pressReleaseCreators PressReleaseCreator[]
 }
 
-model Carrer {
+model Career {
   id          Int      @id @default(autoincrement())
-  carrer_uuid String   @unique
+  career_uuid String   @unique
   image_url   String? // Nullable
-  description String? // Nullable 
+  caption String? // Nullable 
   link        String? // Nullable
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -89,8 +89,8 @@ model CarrerCreator {
   id        Int      @id @default(autoincrement())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
-  carrer    Carrer   @relation(fields: [carrerId], references: [id], onDelete: Cascade)
-  carrerId  Int
+  career    Career   @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  careerId  Int
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
