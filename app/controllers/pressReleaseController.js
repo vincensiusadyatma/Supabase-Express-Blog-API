@@ -135,7 +135,7 @@ const destroy = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const { id } = req.params; // UUID dari URL
+    const { id } = req.params; //uuid
     const { title, date, time, contents } = req.body;
 
     console.log("🛠️ Checking received ID for update:", id);
@@ -144,7 +144,7 @@ const update = async (req, res) => {
       return res.status(400).json({ message: "Missing UUID in request" });
     }
 
-    // Cek apakah press release dengan UUID ini ada di database
+ 
     const existingPressRelease = await prisma.pressRelease.findUnique({
       where: { press_uuid: id },
       include: { pressReleaseContents: true }, // Ambil konten lama
@@ -154,7 +154,7 @@ const update = async (req, res) => {
       return res.status(404).json({ message: "Press release not found" });
     }
 
-    // Update press release di database
+
     const updatedPressRelease = await prisma.pressRelease.update({
       where: { press_uuid: id },
       data: {
@@ -164,21 +164,17 @@ const update = async (req, res) => {
       },
     });
 
-    let updatedContents = []; // ✅ FIX: Pastikan variabel dideklarasikan
+    let updatedContents = []; 
 
-    // Perbarui konten jika ada
     if (contents) {
-      // Parse contents jika dikirim dalam format JSON string
       const parsedContents = typeof contents === "string" ? JSON.parse(contents) : contents;
-
-      // Hapus konten lama hanya jika ada konten baru
       await prisma.pressReleaseContent.deleteMany({ where: { pressReleaseId: existingPressRelease.id } });
 
       for (let i = 0; i < parsedContents.length; i++) {
         const contentData = parsedContents[i];
         let imageUrl = null;
 
-        // Jika ada gambar baru, unggah ke Supabase
+    
         if (req.files && req.files[i]) {
           const file = req.files[i];
           const fileExt = file.originalname.split(".").pop();
@@ -196,7 +192,7 @@ const update = async (req, res) => {
           const { data: publicUrlData } = supabase.storage.from(process.env.SUPABASE_BUCKET).getPublicUrl(fileName);
           imageUrl = publicUrlData.publicUrl;
         } else {
-          // Jika tidak ada gambar baru, gunakan gambar lama
+       
           imageUrl = existingPressRelease.pressReleaseContents[i]?.imageUrl || null;
         }
 
@@ -212,7 +208,7 @@ const update = async (req, res) => {
         updatedContents.push(pressContent);
       }
     } else {
-      // Jika tidak ada konten baru, gunakan konten lama
+
       updatedContents = existingPressRelease.pressReleaseContents;
     }
 
