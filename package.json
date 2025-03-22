@@ -4,7 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "vercel-build": "prisma generate",
+    "vercel-build": "prisma generate && node index.js",
     "start-api": "node index.js",
     "dev-api": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
