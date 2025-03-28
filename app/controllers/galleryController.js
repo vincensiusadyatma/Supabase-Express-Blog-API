@@ -43,6 +43,13 @@ const store = async (req, res) => {
       },
     });
 
+    await prisma.galleryCreator.create({
+      data: {
+        userId: req.user.id,           // ← berasal dari middleware authenticate
+        galleryId: galleryItem.id,
+      },
+    });
+    
     return res.status(201).json({
       message: "Gallery image uploaded successfully",
       data: galleryItem,
@@ -190,5 +197,43 @@ const update = async (req, res) => {
     }
   };
   
+ const getGalleryByUser = async (req, res) => {
+    try {
+      const { uuid } = req.params;
+  
+      if (!uuid) {
+        return res.status(400).json({ message: 'Missing user UUID in URL' });
+      }
+  
+      const user = await prisma.user.findUnique({ where: { user_uuid: uuid } });
+  
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      const creatorRecords = await prisma.galleryCreator.findMany({
+        where: {
+          userId: user.id
+        },
+        include: {
+          gallery: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+  
+      const galleryList = creatorRecords.map(record => record.gallery);
+  
+      return res.status(200).json({
+        success: true,
+        data: galleryList
+      });
+  
+    } catch (error) {
+      console.error("❌ Error in getGalleryByUser:", error);
+      return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    }
+  };
 
-export { store, index, show, destroy,update };
+export { store, index, show, destroy,update, getGalleryByUser };

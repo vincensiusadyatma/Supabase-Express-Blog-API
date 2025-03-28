@@ -77,6 +77,14 @@ const store = async (req, res) => {
         },
       });
 
+      await prisma.pressReleaseCreator.create({
+        data: {
+          userId: req.user.id,            
+          pressReleaseId: pressRelease.id
+        }
+      });
+      
+
       pressContents.push(saved); 
       console.log(`✅ Saved content[${i}]:`, saved);
     }
@@ -197,7 +205,7 @@ const update = async (req, res) => {
       where: { pressReleaseId: existingPressRelease.id },
     });
 
-    // Parse konten baru (JSON string atau langsung array)
+    // Parse konten baru 
     const parsedContents = typeof contents === "string"
       ? JSON.parse(contents)
       : contents;
@@ -206,7 +214,7 @@ const update = async (req, res) => {
       const contentBlock = parsedContents[i];
       const contentText = contentBlock?.content?.trim() || null;
 
-      // Cari file berdasarkan pola nama: contents[0][image], contents[1][image]
+      // Cari file berdasarkan pola nama: contents[0][image], contents[1][image] biar ez
       const imageField = `contents[${i}][image]`;
       const file = req.files?.find(f => f.fieldname === imageField);
 
@@ -231,7 +239,7 @@ const update = async (req, res) => {
         imageUrl = publicUrlData.publicUrl;
       }
 
-      // Simpan konten baru
+      // Save hehe
       const newContent = await prisma.pressReleaseContent.create({
         data: {
           pressReleaseId: existingPressRelease.id,
@@ -261,4 +269,49 @@ const update = async (req, res) => {
 };
 
 
-export { store, index, show, destroy, update };
+const getPressByUser = async (req, res) => {
+  try {
+    const { uuid } = req.params;
+
+    if (!uuid) {
+      return res.status(400).json({ message: 'Missing user UUID in URL' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { user_uuid: uuid } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const creatorRecords = await prisma.pressReleaseCreator.findMany({
+      where: {
+        userId: user.id
+      },
+      include: {
+        pressRelease: {
+          include: {
+            pressReleaseContents: false
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Hanya ambil array dari pressRelease-nya saja :v
+    const pressList = creatorRecords.map(r => r.pressRelease);
+
+    return res.status(200).json({
+      success: true,
+      data: pressList
+    });
+
+  } catch (error) {
+    console.error("❌ Error in getPressByUser:", error);
+    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
+
+export { store, index, show, destroy, update, getPressByUser };
