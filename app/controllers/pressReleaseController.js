@@ -12,10 +12,19 @@ const store = async (req, res) => {
   try {
     const { title, date, time, contents } = req.body;
 
+    // Debug awal
+    console.log("🔥 req.body.contents:", contents);
+    console.log("📂 req.files:", req.files?.map(f => f.fieldname));
+
+    // Validasi input utama
     if (!title || !date || !time || !contents) {
-      return res.status(400).json({ message: "Validation failed", errors: "Missing required fields" });
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: "Missing required fields",
+      });
     }
 
+    // Buat press release utama
     const pressRelease = await prisma.pressRelease.create({
       data: {
         title,
@@ -25,38 +34,51 @@ const store = async (req, res) => {
       },
     });
 
-    const parsedContents = JSON.parse(contents);
-    let pressContents = [];
+    // Parse contents (kalau pake string, convert ke object)
+    const parsedContents = typeof contents === "string"
+      ? JSON.parse(contents)
+      : contents;
+
+    const pressContents = [];
 
     for (let i = 0; i < parsedContents.length; i++) {
       const contentData = parsedContents[i];
+      const contentText = contentData?.content?.trim() || null;
+
+      const imageField = `contents[${i}][image]`;
+      const file = req.files?.find((f) => f.fieldname === imageField);
+
       let imageUrl = null;
 
-      if (req.files[i]) {
-        const file = req.files[i];
+      if (file) {
         const fileExt = file.originalname.split(".").pop();
         const fileName = `press_images/${uuidv4()}.${fileExt}`;
 
-        const { error } = await supabase.storage.from(process.env.SUPABASE_BUCKET).upload(fileName, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false,
-        });
+        const { error } = await supabase.storage
+          .from(process.env.SUPABASE_BUCKET)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
 
         if (error) throw error;
 
-        const { data: publicUrlData } = supabase.storage.from(process.env.SUPABASE_BUCKET).getPublicUrl(fileName);
+        const { data: publicUrlData } = supabase.storage
+          .from(process.env.SUPABASE_BUCKET)
+          .getPublicUrl(fileName);
         imageUrl = publicUrlData.publicUrl;
       }
 
-      const pressContent = await prisma.pressReleaseContent.create({
+      const saved = await prisma.pressReleaseContent.create({
         data: {
           pressReleaseId: pressRelease.id,
-          content: contentData.content || null,
+          content: contentText,
           imageUrl: imageUrl,
         },
       });
 
-      pressContents.push(pressContent);
+      pressContents.push(saved); 
+      console.log(`✅ Saved content[${i}]:`, saved);
     }
 
     return res.status(201).json({
@@ -67,10 +89,14 @@ const store = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Something went wrong", error: error.message });
+    console.error("❌ Error creating press release:", error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
   }
 };
+
 
 /**
  * @route GET /press
@@ -135,26 +161,26 @@ const destroy = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const { id } = req.params; //uuid
+    const { id } = req.params; // UUID
     const { title, date, time, contents } = req.body;
 
-    console.log("🛠️ Checking received ID for update:", id);
+    console.log("🛠️ Updating press release with ID:", id);
 
     if (!id) {
       return res.status(400).json({ message: "Missing UUID in request" });
     }
 
- 
+    // Ambil press release lama
     const existingPressRelease = await prisma.pressRelease.findUnique({
       where: { press_uuid: id },
-      include: { pressReleaseContents: true }, // Ambil konten lama
+      include: { pressReleaseContents: true },
     });
 
     if (!existingPressRelease) {
       return res.status(404).json({ message: "Press release not found" });
     }
 
-
+    // Update press release utamanya
     const updatedPressRelease = await prisma.pressRelease.update({
       where: { press_uuid: id },
       data: {
@@ -164,52 +190,57 @@ const update = async (req, res) => {
       },
     });
 
-    let updatedContents = []; 
+    const updatedContents = [];
 
-    if (contents) {
-      const parsedContents = typeof contents === "string" ? JSON.parse(contents) : contents;
-      await prisma.pressReleaseContent.deleteMany({ where: { pressReleaseId: existingPressRelease.id } });
+    // Hapus semua konten sebelumnya
+    await prisma.pressReleaseContent.deleteMany({
+      where: { pressReleaseId: existingPressRelease.id },
+    });
 
-      for (let i = 0; i < parsedContents.length; i++) {
-        const contentData = parsedContents[i];
-        let imageUrl = null;
+    // Parse konten baru (JSON string atau langsung array)
+    const parsedContents = typeof contents === "string"
+      ? JSON.parse(contents)
+      : contents;
 
-    
-        if (req.files && req.files[i]) {
-          const file = req.files[i];
-          const fileExt = file.originalname.split(".").pop();
-          const fileName = `press_images/${uuidv4()}.${fileExt}`;
+    for (let i = 0; i < parsedContents.length; i++) {
+      const contentBlock = parsedContents[i];
+      const contentText = contentBlock?.content?.trim() || null;
 
-          const { error } = await supabase.storage
-            .from(process.env.SUPABASE_BUCKET)
-            .upload(fileName, file.buffer, {
-              contentType: file.mimetype,
-              upsert: false,
-            });
+      // Cari file berdasarkan pola nama: contents[0][image], contents[1][image]
+      const imageField = `contents[${i}][image]`;
+      const file = req.files?.find(f => f.fieldname === imageField);
 
-          if (error) throw error;
+      let imageUrl = null;
 
-          const { data: publicUrlData } = supabase.storage.from(process.env.SUPABASE_BUCKET).getPublicUrl(fileName);
-          imageUrl = publicUrlData.publicUrl;
-        } else {
-       
-          imageUrl = existingPressRelease.pressReleaseContents[i]?.imageUrl || null;
-        }
+      if (file) {
+        const fileExt = file.originalname.split(".").pop();
+        const fileName = `press_images/${uuidv4()}.${fileExt}`;
 
-        // Simpan konten baru
-        const pressContent = await prisma.pressReleaseContent.create({
-          data: {
-            pressReleaseId: existingPressRelease.id,
-            content: contentData.content || null,
-            imageUrl: imageUrl,
-          },
-        });
+        const { error } = await supabase.storage
+          .from(process.env.SUPABASE_BUCKET)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
 
-        updatedContents.push(pressContent);
+        if (error) throw error;
+
+        const { data: publicUrlData } = supabase.storage
+          .from(process.env.SUPABASE_BUCKET)
+          .getPublicUrl(fileName);
+        imageUrl = publicUrlData.publicUrl;
       }
-    } else {
 
-      updatedContents = existingPressRelease.pressReleaseContents;
+      // Simpan konten baru
+      const newContent = await prisma.pressReleaseContent.create({
+        data: {
+          pressReleaseId: existingPressRelease.id,
+          content: contentText,
+          imageUrl: imageUrl,
+        },
+      });
+
+      updatedContents.push(newContent);
     }
 
     return res.status(200).json({
@@ -222,8 +253,12 @@ const update = async (req, res) => {
 
   } catch (error) {
     console.error("🛠️ Error in update function:", error);
-    return res.status(500).json({ message: "Something went wrong", error: error.message });
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
   }
 };
+
 
 export { store, index, show, destroy, update };
