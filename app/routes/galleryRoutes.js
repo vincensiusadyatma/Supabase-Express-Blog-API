@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { store, index, show, destroy,update } from "../controllers/galleryController.js";
+import { store, index, show, destroy,update,getGalleryByUser } from "../controllers/galleryController.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
@@ -14,4 +14,6 @@ router.get("/", authenticate, index);
 router.get("/:id", authenticate, show);
 router.delete("/:id",  authenticate, destroy);
 router.put("/:id",  authenticate, upload.single("image"), update); 
+router.get("/user/:uuid", authenticate, getGalleryByUser);
+
 export default router;

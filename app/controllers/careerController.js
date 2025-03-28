@@ -44,6 +44,13 @@ const store = async (req, res) => {
       },
     });
 
+    await prisma.carrerCreator.create({
+      data: {
+        userId: req.user.id,         // ← dari middleware authenticate
+        careerId: careerItem.id,
+      },
+    });
+
     return res.status(201).json({
       message: "Career image uploaded successfully",
       data: careerItem,
@@ -191,5 +198,43 @@ const update = async (req, res) => {
   }
 };
 
+const getCareerByUser = async (req, res) => {
+  try {
+    const { uuid } = req.params;
 
-export { store, index, show, destroy, update };
+    if (!uuid) {
+      return res.status(400).json({ message: 'Missing user UUID in URL' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { user_uuid: uuid } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const creatorRecords = await prisma.carrerCreator.findMany({
+      where: {
+        userId: user.id
+      },
+      include: {
+        career: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    const careerList = creatorRecords.map(record => record.career);
+
+    return res.status(200).json({
+      success: true,
+      data: careerList
+    });
+
+  } catch (error) {
+    console.error("❌ Error in getCareerByUser:", error);
+    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
+export { store, index, show, destroy, update, getCareerByUser };
